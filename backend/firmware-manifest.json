@@ -1,0 +1,103 @@
+{
+  "devices": [
+    {
+      "id": "ROVER-ESP32-01",
+      "type": "rover",
+      "firmware": "rover_esp32.ino",
+      "capabilities": [
+        "movement",
+        "obstacle_detection",
+        "plant_detection_ir",
+        "tank1_monitoring",
+        "tank2_monitoring",
+        "treatment_pump_1",
+        "treatment_pump_2",
+        "gps",
+        "emergency_stop",
+        "auto_mode"
+      ],
+      "topics": {
+        "telemetry": "farm/rover/ROVER-ESP32-01/telemetry",
+        "command": "farm/rover/ROVER-ESP32-01/command",
+        "ack": "farm/rover/ROVER-ESP32-01/ack"
+      },
+      "commands": [
+        "FORWARD",
+        "BACKWARD",
+        "LEFT",
+        "RIGHT",
+        "STOP",
+        "AUTO_MODE",
+        "MANUAL_MODE",
+        "PAUSE",
+        "RESUME",
+        "EMERGENCY_STOP",
+        "RESET_EMERGENCY_STOP",
+        "TREAT_PUMP1",
+        "TREAT_PUMP2",
+        "STOP_TREATMENT",
+        "INSPECTION_COMPLETE"
+      ],
+      "sensors": {
+        "ir_pin": 34,
+        "front_left_ultrasonic": {"trig": 16, "echo": 17},
+        "front_right_ultrasonic": {"trig": 18, "echo": 19},
+        "tank1_ultrasonic": {"trig": 21, "echo": 22},
+        "tank2_ultrasonic": {"trig": 23, "echo": 25},
+        "gps_pins": {"rx": 4, "tx": 5}
+      }
+    },
+    {
+      "id": "IRRIGATION-NODEMCU-01",
+      "type": "irrigation",
+      "firmware": "irrigation_esp32.ino",
+      "capabilities": [
+        "soil_moisture",
+        "rain_detection",
+        "temperature_dht11",
+        "humidity_dht11",
+        "water_pump",
+        "emergency_stop",
+        "threshold_config"
+      ],
+      "topics": {
+        "telemetry": "farm/irrigation/IRRIGATION-NODEMCU-01/telemetry",
+        "command": "farm/irrigation/IRRIGATION-NODEMCU-01/command",
+        "ack": "farm/irrigation/IRRIGATION-NODEMCU-01/ack"
+      },
+      "commands": [
+        "IRRIGATE",
+        "STOP_IRRIGATION",
+        "EMERGENCY_STOP",
+        "RESET_EMERGENCY_STOP",
+        "SET_MOISTURE_THRESHOLD"
+      ],
+      "sensors": {
+        "soil_moisture_pin": "A0",
+        "soil_dry_adc": 800,
+        "soil_wet_adc": 200,
+        "rain_pin": "D6",
+        "dht_pin": "D5",
+        "water_pump_pin": "D1"
+      }
+    },
+    {
+      "id": "ESP32-CAM-ROVER-01",
+      "type": "camera",
+      "firmware": "esp32_cam.ino",
+      "crop_name": "Tomato",
+      "capabilities": [
+        "camera_capture",
+        "http_status",
+        "http_scan_upload",
+        "ai_crop_pathology"
+      ],
+      "endpoints": {
+        "status": "/status",
+        "capture": "/capture",
+        "scan": "/scan",
+        "upload_backend": "/api/upload-image"
+      }
+    }
+  ]
+}

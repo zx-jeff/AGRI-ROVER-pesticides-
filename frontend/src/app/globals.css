@@ -1,0 +1,154 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-surface-50 text-surface-800 antialiased font-sans min-h-screen;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  ::selection {
+    @apply bg-brand-500 text-white;
+  }
+}
+
+/* Custom smooth scrollbar - bright theme */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 100px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Modern card system */
+.card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.08), 0 2px 6px -2px rgba(0, 0, 0, 0.04);
+}
+
+/* Tinted metric cards */
+.metric-brand {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  border-color: #a7f3d0;
+}
+
+.metric-accent {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border-color: #bae6fd;
+}
+
+.metric-warm {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border-color: #fde68a;
+}
+
+.metric-rose {
+  background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);
+  border-color: #fecdd3;
+}
+
+/* Gradient button */
+.btn-primary {
+  @apply bg-gradient-to-r from-brand-600 to-brand-500 text-white font-bold rounded-xl transition-all duration-200;
+  box-shadow: 0 4px 14px -3px rgba(16, 185, 129, 0.4);
+}
+
+.btn-primary:hover {
+  @apply from-brand-500 to-brand-400;
+  box-shadow: 0 6px 20px -3px rgba(16, 185, 129, 0.5);
+  transform: translateY(-1px);
+}
+
+.btn-accent {
+  @apply bg-gradient-to-r from-accent-600 to-accent-500 text-white font-bold rounded-xl transition-all duration-200;
+  box-shadow: 0 4px 14px -3px rgba(14, 165, 233, 0.4);
+}
+
+.btn-accent:hover {
+  @apply from-accent-500 to-accent-400;
+  box-shadow: 0 6px 20px -3px rgba(14, 165, 233, 0.5);
+  transform: translateY(-1px);
+}
+
+/* Modern range slider */
+input[type="range"] {
+  @apply appearance-none h-2 rounded-full cursor-pointer;
+  background: #e2e8f0;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  @apply appearance-none w-5 h-5 rounded-full bg-brand-500 cursor-pointer;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+  transition: all 0.15s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  @apply bg-brand-400;
+  transform: scale(1.15);
+}
+
+/* Table styles */
+.table-modern th {
+  @apply px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-surface-500 bg-surface-50 border-b-2 border-surface-200;
+}
+
+.table-modern td {
+  @apply px-4 py-3 text-sm border-b border-surface-100;
+}
+
+.table-modern tbody tr {
+  @apply transition-colors;
+}
+
+.table-modern tbody tr:hover {
+  @apply bg-brand-50/40;
+}
+
+/* Status badges */
+.badge-success {
+  @apply px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-brand-50 text-brand-700 border border-brand-200;
+}
+
+.badge-warning {
+  @apply px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-warm-50 text-warm-700 border border-warm-200;
+}
+
+.badge-danger {
+  @apply px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200;
+}
+
+.badge-info {
+  @apply px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-accent-50 text-accent-700 border border-accent-200;
+}
+
+/* Input styling */
+.input-modern {
+  @apply w-full bg-white border border-surface-200 rounded-xl px-4 py-2.5 text-sm text-surface-800 placeholder:text-surface-400
+  focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all duration-200;
+}
+
+.select-modern {
+  @apply w-full bg-white border border-surface-200 rounded-xl px-4 py-2.5 text-sm text-surface-800
+  focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all duration-200 cursor-pointer;
+}
