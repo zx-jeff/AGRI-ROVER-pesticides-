@@ -16,8 +16,9 @@ interface Rect {
 }
 
 export default function LiveCameraFeed({ streamUrl, onAnalysisComplete }: LiveCameraFeedProps) {
-  const [cameraSource, setCameraSource] = useState<'laptop' | 'esp32'>('laptop');
-  const [esp32Ip, setEsp32Ip] = useState<string>(streamUrl || 'http://192.168.1.100:81/stream');
+  const [cameraSource, setCameraSource] = useState<'laptop' | 'esp32'>('esp32');
+  const [esp32Ip, setEsp32Ip] = useState<string>(streamUrl || 'http://localhost:8000/api/camera/stream');
+  const [streamError, setStreamError] = useState<boolean>(false);
   const [isWebcamActive, setIsWebcamActive] = useState<boolean>(false);
   const [webcamError, setWebcamError] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
@@ -34,10 +35,27 @@ export default function LiveCameraFeed({ streamUrl, onAnalysisComplete }: LiveCa
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
+  const applyCustomIp = (inputIp: string) => {
+    let formatted = inputIp.trim();
+    if (!formatted) {
+      formatted = 'http://localhost:8000/api/camera/stream';
+    } else {
+      if (!formatted.startsWith('http://') && !formatted.startsWith('https://')) {
+        formatted = `http://${formatted}`;
+      }
+      if (!formatted.includes('/', 8)) {
+        formatted = `${formatted}/stream`;
+      }
+    }
+    setEsp32Ip(formatted);
+    setCameraSource('esp32');
+    setStreamError(false);
+    localStorage.setItem('agrirover_cam_ip', formatted);
+  };
+
   useEffect(() => {
     if (streamUrl) {
-      setEsp32Ip(streamUrl);
-      setCameraSource('esp32');
+      applyCustomIp(streamUrl);
     }
   }, [streamUrl]);
 
@@ -135,73 +153,162 @@ export default function LiveCameraFeed({ streamUrl, onAnalysisComplete }: LiveCa
 
   // Capture frame from active camera stream (Full or ROI cropped) and send to Gemini AI
   const handleCaptureAndAnalyze = async () => {
-    let fullCanvas = canvasRef.current || document.createElement('canvas');
-    let sourceWidth = 640;
-    let sourceHeight = 480;
-
-    if (cameraSource === 'laptop') {
-      if (!videoRef.current) return;
-      const video = videoRef.current;
-      sourceWidth = video.videoWidth || 640;
-      sourceHeight = video.videoHeight || 480;
-      fullCanvas.width = sourceWidth;
-      fullCanvas.height = sourceHeight;
-      const ctx = fullCanvas.getContext('2d');
-      if (!ctx) return;
-      ctx.drawImage(video, 0, 0, sourceWidth, sourceHeight);
-    } else {
-      const streamImg = document.getElementById('esp32-stream-img') as HTMLImageElement;
-      if (streamImg) {
-        sourceWidth = streamImg.naturalWidth || 800;
-        sourceHeight = streamImg.naturalHeight || 600;
-        fullCanvas.width = sourceWidth;
-        fullCanvas.height = sourceHeight;
-        const ctx = fullCanvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(streamImg, 0, 0, sourceWidth, sourceHeight);
-        }
-      }
-    }
-
-    let finalCanvas = fullCanvas;
-
-    // Apply ROI cropping if ROI is enabled and a rectangle was selected
-    if (isRoiEnabled && roiRect && roiRect.w > 10 && roiRect.h > 10 && containerRef.current) {
-      const containerBounds = containerRef.current.getBoundingClientRect();
-      const scaleX = sourceWidth / containerBounds.width;
-      const scaleY = sourceHeight / containerBounds.height;
-
-      const cropX = roiRect.x * scaleX;
-      const cropY = roiRect.y * scaleY;
-      const cropW = roiRect.w * scaleX;
-      const cropH = roiRect.h * scaleY;
-
-      const cropCanvas = document.createElement('canvas');
-      cropCanvas.width = cropW;
-      cropCanvas.height = cropH;
-      const cropCtx = cropCanvas.getContext('2d');
-
-      if (cropCtx) {
-        cropCtx.drawImage(fullCanvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
-        finalCanvas = cropCanvas;
-      }
-    }
-
-    const imageBase64 = finalCanvas.toDataURL('image/jpeg');
-    setCroppedPreview(imageBase64);
-
-    if (!imageBase64) {
-      alert("No active camera stream available to capture frame.");
-      return;
-    }
-
     setIsAnalyzing(true);
     setAnalysisResult(null);
 
-    const formData = new FormData();
-    formData.append('image_base64', imageBase64);
+    let imageBase64: string | null = null;
 
     try {
+      if (cameraSource === 'laptop') {
+        if (videoRef.current) {
+          const video = videoRef.current;
+          const sourceWidth = video.videoWidth || 640;
+          const sourceHeight = video.videoHeight || 480;
+          const fullCanvas = canvasRef.current || document.createElement('canvas');
+          fullCanvas.width = sourceWidth;
+          fullCanvas.height = sourceHeight;
+          const ctx = fullCanvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(video, 0, 0, sourceWidth, sourceHeight);
+
+            let finalCanvas = fullCanvas;
+            if (isRoiEnabled && roiRect && roiRect.w > 10 && roiRect.h > 10 && containerRef.current) {
+              const containerBounds = containerRef.current.getBoundingClientRect();
+              const scaleX = sourceWidth / containerBounds.width;
+              const scaleY = sourceHeight / containerBounds.height;
+              const cropX = roiRect.x * scaleX;
+              const cropY = roiRect.y * scaleY;
+              const cropW = roiRect.w * scaleX;
+              const cropH = roiRect.h * scaleY;
+
+              const cropCanvas = document.createElement('canvas');
+              cropCanvas.width = cropW;
+              cropCanvas.height = cropH;
+              const cropCtx = cropCanvas.getContext('2d');
+              if (cropCtx) {
+                cropCtx.drawImage(fullCanvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+                finalCanvas = cropCanvas;
+              }
+            }
+            imageBase64 = finalCanvas.toDataURL('image/jpeg');
+          }
+        }
+      } else {
+        // ESP32-CAM mode: Try capturing directly from visible streamImg first
+        const streamImg = document.getElementById('esp32-stream-img') as HTMLImageElement;
+        if (streamImg && streamImg.complete && (streamImg.naturalWidth > 0 || streamImg.clientWidth > 0)) {
+          try {
+            const sourceWidth = streamImg.naturalWidth || streamImg.clientWidth || 640;
+            const sourceHeight = streamImg.naturalHeight || streamImg.clientHeight || 480;
+            const fullCanvas = canvasRef.current || document.createElement('canvas');
+            fullCanvas.width = sourceWidth;
+            fullCanvas.height = sourceHeight;
+            const ctx = fullCanvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(streamImg, 0, 0, sourceWidth, sourceHeight);
+
+              let finalCanvas = fullCanvas;
+              if (isRoiEnabled && roiRect && roiRect.w > 10 && roiRect.h > 10 && containerRef.current) {
+                const containerBounds = containerRef.current.getBoundingClientRect();
+                const scaleX = sourceWidth / containerBounds.width;
+                const scaleY = sourceHeight / containerBounds.height;
+                const cropX = roiRect.x * scaleX;
+                const cropY = roiRect.y * scaleY;
+                const cropW = roiRect.w * scaleX;
+                const cropH = roiRect.h * scaleY;
+
+                const cropCanvas = document.createElement('canvas');
+                cropCanvas.width = cropW;
+                cropCanvas.height = cropH;
+                const cropCtx = cropCanvas.getContext('2d');
+                if (cropCtx) {
+                  cropCtx.drawImage(fullCanvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+                  finalCanvas = cropCanvas;
+                }
+              }
+              const capturedB64 = finalCanvas.toDataURL('image/jpeg');
+              if (capturedB64 && capturedB64.length > 500) {
+                imageBase64 = capturedB64;
+              }
+            }
+          } catch (e) {
+            console.warn("Direct streamImg canvas capture tainted/failed, attempting network snapshot:", e);
+          }
+        }
+
+        // If direct element capture was blank/tainted, fetch frame via backend snapshot or proxy
+        if (!imageBase64) {
+          let fetchUrl = 'http://localhost:8000/api/camera/snapshot';
+
+          if (esp32Ip.includes('localhost') || esp32Ip.includes('127.0.0.1')) {
+            fetchUrl = 'http://localhost:8000/api/camera/snapshot';
+          } else if (esp32Ip) {
+            const baseUrl = esp32Ip.replace(/\/stream\/?$/, '').replace(/\/+$/, '');
+            const espCaptureUrl = `${baseUrl}/capture`;
+            fetchUrl = `http://localhost:8000/api/camera/proxy-capture?url=${encodeURIComponent(espCaptureUrl)}`;
+          }
+
+          try {
+            const snapshotRes = await fetch(fetchUrl);
+            const blob = await snapshotRes.blob();
+
+            const blobUrl = URL.createObjectURL(blob);
+            const img = new Image();
+            await new Promise((resolve, reject) => {
+              img.onload = resolve;
+              img.onerror = reject;
+              img.src = blobUrl;
+            });
+
+            const sourceWidth = img.naturalWidth || 640;
+            const sourceHeight = img.naturalHeight || 480;
+            const fullCanvas = canvasRef.current || document.createElement('canvas');
+            fullCanvas.width = sourceWidth;
+            fullCanvas.height = sourceHeight;
+            const ctx = fullCanvas.getContext('2d');
+
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, sourceWidth, sourceHeight);
+
+              let finalCanvas = fullCanvas;
+              if (isRoiEnabled && roiRect && roiRect.w > 10 && roiRect.h > 10 && containerRef.current) {
+                const containerBounds = containerRef.current.getBoundingClientRect();
+                const scaleX = sourceWidth / containerBounds.width;
+                const scaleY = sourceHeight / containerBounds.height;
+                const cropX = roiRect.x * scaleX;
+                const cropY = roiRect.y * scaleY;
+                const cropW = roiRect.w * scaleX;
+                const cropH = roiRect.h * scaleY;
+
+                const cropCanvas = document.createElement('canvas');
+                cropCanvas.width = cropW;
+                cropCanvas.height = cropH;
+                const cropCtx = cropCanvas.getContext('2d');
+                if (cropCtx) {
+                  cropCtx.drawImage(fullCanvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+                  finalCanvas = cropCanvas;
+                }
+              }
+              imageBase64 = finalCanvas.toDataURL('image/jpeg');
+            }
+            URL.revokeObjectURL(blobUrl);
+          } catch (err) {
+            console.error("Network snapshot fetch failed:", err);
+          }
+        }
+      }
+
+      if (!imageBase64) {
+        alert("Unable to capture frame from camera stream. Please check camera connection.");
+        setIsAnalyzing(false);
+        return;
+      }
+
+      setCroppedPreview(imageBase64);
+
+      const formData = new FormData();
+      formData.append('image_base64', imageBase64);
+
       const res = await fetch('http://localhost:8000/api/ai/upload-and-analyze', {
         method: 'POST',
         body: formData,
@@ -211,6 +318,7 @@ export default function LiveCameraFeed({ streamUrl, onAnalysisComplete }: LiveCa
       if (onAnalysisComplete) onAnalysisComplete(data);
     } catch (e) {
       console.error("Camera frame analysis failed:", e);
+      alert(`Camera analysis error: ${e}`);
     } finally {
       setIsAnalyzing(false);
     }
@@ -258,6 +366,40 @@ export default function LiveCameraFeed({ streamUrl, onAnalysisComplete }: LiveCa
           </button>
         </div>
       </div>
+
+      {/* ESP32 IP Direct Input Bar */}
+      {cameraSource === 'esp32' && (
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-surface-50 p-2 rounded-xl border border-surface-200 text-xs">
+          <span className="font-bold text-surface-600 flex items-center gap-1.5 flex-shrink-0 px-1">
+            <Camera className="w-3.5 h-3.5 text-accent-500" />
+            Target ESP32-CAM IP:
+          </span>
+          <input
+            type="text"
+            value={esp32Ip}
+            onChange={(e) => setEsp32Ip(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') applyCustomIp(esp32Ip);
+            }}
+            placeholder="e.g. 192.168.1.100 or http://192.168.1.100:81/stream"
+            className="input-modern py-1 px-2.5 font-mono text-xs flex-1"
+          />
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => applyCustomIp(esp32Ip)}
+              className="px-3 py-1 bg-accent-600 hover:bg-accent-500 text-white font-bold rounded-lg text-xs flex items-center gap-1 transition-all shadow-sm"
+            >
+              Connect IP
+            </button>
+            <button
+              onClick={() => applyCustomIp('http://localhost:8000/api/camera/stream')}
+              className="px-2.5 py-1 bg-surface-200 hover:bg-surface-300 text-surface-700 font-bold rounded-lg text-xs transition-all"
+            >
+              Use Demo Stream
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ROI Toggle Bar */}
       <div className="flex items-center justify-between bg-surface-50 px-3 py-2 rounded-xl border border-surface-200 text-xs">
@@ -324,18 +466,63 @@ export default function LiveCameraFeed({ streamUrl, onAnalysisComplete }: LiveCa
             )}
           </>
         ) : (
-          <img
-            id="esp32-stream-img"
-            src={esp32Ip}
-            alt="ESP32-CAM Stream"
-            className="w-full h-full object-cover pointer-events-none"
-            onError={() => {
-              const img = document.getElementById('esp32-stream-img') as HTMLImageElement;
-              if (img && !img.src.includes('/api/camera/stream')) {
-                img.src = "http://localhost:8000/api/camera/stream";
-              }
-            }}
-          />
+          <div className="relative w-full h-full flex items-center justify-center">
+            <img
+              key={esp32Ip}
+              id="esp32-stream-img"
+              src={esp32Ip}
+              alt="ESP32-CAM Stream"
+              className="w-full h-full object-cover pointer-events-none"
+              onLoad={() => setStreamError(false)}
+              onError={() => setStreamError(true)}
+            />
+            {streamError && (
+              <div className="absolute inset-0 bg-surface-900/90 backdrop-blur-sm flex flex-col items-center justify-center text-white text-xs p-4 text-center z-10 space-y-3">
+                <AlertTriangle className="w-8 h-8 text-amber-400" />
+                <div>
+                  <p className="font-bold text-sm">Unable to load ESP32-CAM stream</p>
+                  <p className="text-surface-300 text-[11px] mt-1 font-mono break-all">{esp32Ip}</p>
+                  <p className="text-surface-400 text-[10px] mt-1">Make sure the ESP32 camera is powered on and reachable on your Wi-Fi network.</p>
+                </div>
+                <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                  <button
+                    onClick={() => {
+                      setStreamError(false);
+                      const img = document.getElementById('esp32-stream-img') as HTMLImageElement;
+                      if (img) img.src = `${esp32Ip}${esp32Ip.includes('?') ? '&' : '?'}t=${Date.now()}`;
+                    }}
+                    className="px-3 py-1.5 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 transition-all shadow-sm"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Retry Direct Stream
+                  </button>
+                  {!esp32Ip.includes('proxy-stream') && !esp32Ip.includes('localhost:8000') && (
+                    <button
+                      onClick={() => {
+                        const proxyUrl = `http://localhost:8000/api/camera/proxy-stream?url=${encodeURIComponent(esp32Ip)}`;
+                        setEsp32Ip(proxyUrl);
+                        setStreamError(false);
+                      }}
+                      className="px-3 py-1.5 bg-accent-600 hover:bg-accent-500 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 transition-all shadow-sm"
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      Try Backend Stream Proxy
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      setEsp32Ip("http://localhost:8000/api/camera/stream");
+                      setStreamError(false);
+                    }}
+                    className="px-3 py-1.5 bg-surface-700 hover:bg-surface-600 text-surface-200 font-bold rounded-lg text-xs flex items-center gap-1.5 transition-all"
+                  >
+                    <Video className="w-3.5 h-3.5" />
+                    Use Demo Stream
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Bounding Box Render */}

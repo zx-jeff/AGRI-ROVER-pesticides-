@@ -27,10 +27,24 @@ export default function Dashboard() {
 
   // IP Configuration State
   const [roverIp, setRoverIp] = useState<string>('192.168.1.100');
-  const [camIp, setCamIp] = useState<string>('http://192.168.1.101:81/stream');
-  const [activeCamUrl, setActiveCamUrl] = useState<string>('http://192.168.1.101:81/stream');
+  const [camIp, setCamIp] = useState<string>('http://localhost:8000/api/camera/stream');
+  const [irrigationIp, setIrrigationIp] = useState<string>('192.168.1.102');
+  const [activeCamUrl, setActiveCamUrl] = useState<string>('http://localhost:8000/api/camera/stream');
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
   const [connectionMessage, setConnectionMessage] = useState<string | null>(null);
+
+  // Load saved device IP configuration from localStorage on mount
+  useEffect(() => {
+    const savedCamIp = localStorage.getItem('agrirover_cam_ip');
+    const savedRoverIp = localStorage.getItem('agrirover_rover_ip');
+    const savedIrrigationIp = localStorage.getItem('agrirover_irrigation_ip');
+    if (savedCamIp) {
+      setCamIp(savedCamIp);
+      setActiveCamUrl(savedCamIp);
+    }
+    if (savedRoverIp) setRoverIp(savedRoverIp);
+    if (savedIrrigationIp) setIrrigationIp(savedIrrigationIp);
+  }, []);
 
   const fetchOverview = async () => {
     try {
@@ -62,17 +76,42 @@ export default function Dashboard() {
   const handleConnectDevices = async () => {
     setIsConnecting(true);
     setConnectionMessage(null);
+    let formattedUrl = camIp.trim();
+    if (formattedUrl) {
+      if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
+        formattedUrl = `http://${formattedUrl}`;
+      }
+      if (!formattedUrl.includes('/', 8)) {
+        formattedUrl = `${formattedUrl}/stream`;
+      }
+    } else {
+      formattedUrl = 'http://localhost:8000/api/camera/stream';
+    }
+
+    let formattedIrrigation = irrigationIp.trim();
+    if (formattedIrrigation && !formattedIrrigation.startsWith('http://') && !formattedIrrigation.startsWith('https://')) {
+      formattedIrrigation = `http://${formattedIrrigation}`;
+    }
+
+    setCamIp(formattedUrl);
+    setActiveCamUrl(formattedUrl);
+    localStorage.setItem('agrirover_cam_ip', formattedUrl);
+    localStorage.setItem('agrirover_rover_ip', roverIp);
+    localStorage.setItem('agrirover_irrigation_ip', formattedIrrigation);
+
     try {
-      // Sync IP details with backend telemetry
-      await fetch(`http://localhost:8000/api/rover/telemetry?battery=95.0&obstacle_distance=150.0&row_index=1`, {
-        method: 'POST',
-      });
-      setActiveCamUrl(camIp);
-      setConnectionMessage(`Successfully synced with Rover IP (${roverIp}) and ESP32-CAM (${camIp})!`);
+      await Promise.all([
+        fetch(`http://localhost:8000/api/rover/telemetry?battery=95.0&obstacle_distance=150.0&row_index=1`, { method: 'POST' }),
+        fetch('http://localhost:8000/api/irrigation/ip-config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ip_address: formattedIrrigation })
+        })
+      ]);
+      setConnectionMessage(`Successfully synced device IPs: Rover (${roverIp}), ESP32-CAM (${formattedUrl}), NodeMCU Irrigation (${formattedIrrigation})!`);
       fetchOverview();
     } catch (e) {
-      console.error(e);
-      setConnectionMessage("Connection attempted. Synced camera stream URL.");
+      setConnectionMessage(`Synced device configuration URLs!`);
     } finally {
       setIsConnecting(false);
       setTimeout(() => setConnectionMessage(null), 4000);
@@ -125,12 +164,12 @@ export default function Dashboard() {
           <span className="text-[11px] font-mono text-surface-400">Wi-Fi / Local Network</span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* Rover ESP32 IP Field */}
           <div>
             <label className="text-[11px] text-surface-500 block mb-1.5 font-semibold flex items-center gap-1.5">
               <Server className="w-3.5 h-3.5 text-brand-500" />
-              Rover ESP32 IP Address
+              Rover ESP32 IP
             </label>
             <input
               type="text"
@@ -156,6 +195,21 @@ export default function Dashboard() {
             />
           </div>
 
+          {/* Irrigation NodeMCU ESP8266 IP Field */}
+          <div>
+            <label className="text-[11px] text-surface-500 block mb-1.5 font-semibold flex items-center gap-1.5">
+              <Droplets className="w-3.5 h-3.5 text-sky-500" />
+              Irrigation NodeMCU IP
+            </label>
+            <input
+              type="text"
+              value={irrigationIp}
+              onChange={(e) => setIrrigationIp(e.target.value)}
+              placeholder="e.g. 192.168.1.102"
+              className="input-modern font-mono text-xs"
+            />
+          </div>
+
           {/* Connect Button */}
           <div className="flex items-end">
             <button
@@ -164,7 +218,7 @@ export default function Dashboard() {
               className="w-full py-2.5 btn-primary text-xs flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <LinkIcon className="w-4 h-4" />
-              <span>CONNECT & SYNC</span>
+              <span>CONNECT ALL DEVICES</span>
             </button>
           </div>
         </div>

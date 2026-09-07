@@ -51,21 +51,19 @@ class SafetyEngine:
     def evaluate_irrigation_safety(
         soil_moisture: float,
         rain_detected: bool,
-        rover_mode: str,
-        suppress_if_rain: bool = True,
-        min_soil_moisture: float = 70.0
+        threshold: float = 40.0
     ) -> tuple[bool, str]:
         """
-        Evaluates smart irrigation safety rules according to SRS FR-15, FR-17:
-        Returns: (authorized: bool, reason: str)
+        Evaluates smart irrigation safety rules according to specification:
+        Step 1: Check Rain -> If Rain detected -> Pump OFF (Blocked)
+        Step 2: Check Soil -> If Soil >= threshold (40%) -> Pump OFF (Blocked)
+        Step 3: If No Rain & Soil < threshold -> Pump ON (Authorized)
+        Note: No Emergency Stop in the irrigation system.
         """
-        if rover_mode == "EMERGENCY_STOP":
-            return False, "BLOCKED: Emergency Stop active. All pumps disabled."
+        if rain_detected:
+            return False, "BLOCKED BY SAFETY: Rain sensor detected precipitation. Water pump suppressed."
 
-        if suppress_if_rain and rain_detected:
-            return False, "BLOCKED BY SAFETY: Rain sensor detected precipitation. Irrigation suppressed."
+        if soil_moisture >= threshold:
+            return False, f"BLOCKED BY SAFETY: Soil moisture ({soil_moisture:.1f}%) is at or above threshold ({threshold:.1f}%). Irrigation not required."
 
-        if soil_moisture >= min_soil_moisture:
-            return False, f"BLOCKED BY SAFETY: Soil moisture level ({soil_moisture:.1f}%) is already above threshold ({min_soil_moisture:.1f}%)."
-
-        return True, f"AUTHORIZED: Soil moisture ({soil_moisture:.1f}%) requires irrigation."
+        return True, f"AUTHORIZED: Soil moisture ({soil_moisture:.1f}%) is below threshold ({threshold:.1f}%) and no rain detected."

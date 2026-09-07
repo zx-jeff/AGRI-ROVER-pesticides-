@@ -95,6 +95,17 @@ class SensorReading(Base):
     rain_detected = Column(Boolean, default=False)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
 
+class IrrigationAutoConfig(Base):
+    __tablename__ = "irrigation_auto_config"
+
+    id = Column(Integer, primary_key=True, index=True)
+    cycles = Column(Integer, default=3)
+    duration_sec = Column(Integer, default=10)
+    moisture_threshold = Column(Float, default=40.0)
+    mode = Column(String, default="MANUAL")  # MANUAL, AUTO
+    is_active = Column(Boolean, default=False)
+    ip_address = Column(String, default="192.168.1.102")
+
 class IrrigationSchedule(Base):
     __tablename__ = "irrigation_schedules"
 

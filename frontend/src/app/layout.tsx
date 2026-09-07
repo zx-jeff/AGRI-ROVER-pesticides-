@@ -31,23 +31,60 @@ function AppShell({ children }: { children: React.ReactNode }) {
   const [isWsConnected, setIsWsConnected] = useState<boolean>(false);
 
   useEffect(() => {
-    // Connect to Backend WebSocket
-    const ws = new WebSocket('ws://localhost:8000/ws');
-    ws.onopen = () => setIsWsConnected(true);
-    ws.onclose = () => setIsWsConnected(false);
-    ws.onmessage = (event) => {
+    let ws: WebSocket | null = null;
+    let reconnectTimer: NodeJS.Timeout | null = null;
+    let isMounted = true;
+
+    const connectWs = () => {
+      if (!isMounted) return;
       try {
-        const msg = JSON.parse(event.data);
-        if (msg.type === 'ROVER_UPDATE') {
-          if (msg.data.mode) setRoverMode(msg.data.mode);
-          if (msg.data.mode === 'EMERGENCY_STOP') setEmergencyActive(true);
-          else setEmergencyActive(false);
-        }
+        ws = new WebSocket('ws://localhost:8000/ws');
+
+        ws.onopen = () => {
+          if (isMounted) setIsWsConnected(true);
+        };
+
+        ws.onclose = () => {
+          if (isMounted) {
+            setIsWsConnected(false);
+            reconnectTimer = setTimeout(connectWs, 2000);
+          }
+        };
+
+        ws.onerror = () => {
+          if (isMounted) {
+            setIsWsConnected(false);
+          }
+        };
+
+        ws.onmessage = (event) => {
+          if (!isMounted) return;
+          try {
+            const msg = JSON.parse(event.data);
+            if (msg.type === 'ROVER_UPDATE') {
+              if (msg.data.mode) setRoverMode(msg.data.mode);
+              if (msg.data.mode === 'EMERGENCY_STOP') setEmergencyActive(true);
+              else setEmergencyActive(false);
+            }
+          } catch (e) {
+            console.error('WS parse error', e);
+          }
+        };
       } catch (e) {
-        console.error('WS parse error', e);
+        if (isMounted) {
+          setIsWsConnected(false);
+          reconnectTimer = setTimeout(connectWs, 2000);
+        }
       }
     };
-    return () => ws.close();
+
+    connectWs();
+
+    return () => {
+      isMounted = false;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (ws) ws.close();
+    };
   }, []);
 
   const handleGlobalEmergencyStop = async () => {

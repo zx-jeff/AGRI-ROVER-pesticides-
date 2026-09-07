@@ -27,6 +27,18 @@ def generate_mock_mjpeg_stream():
                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
         time.sleep(0.05)
 
+import os
+
+# Sample high quality plant leaf snapshot for demo/fallback capture
+SAMPLE_LEAF_PATH = os.path.join(os.path.dirname(__file__), "..", "sample_leaf.b64")
+if os.path.exists(SAMPLE_LEAF_PATH):
+    with open(SAMPLE_LEAF_PATH, "r") as f:
+        MOCK_LEAF_SNAPSHOT = base64.b64decode(f.read().strip())
+else:
+    MOCK_LEAF_SNAPSHOT = base64.b64decode(
+        "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAHgAoMBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA="
+    )
+
 @router.get("/api/camera/stream")
 def get_live_mjpeg_stream():
     """Continuous MJPEG stream for frontend live viewer."""
@@ -35,6 +47,52 @@ def get_live_mjpeg_stream():
         media_type="multipart/x-mixed-replace; boundary=frame"
     )
 
+@router.get("/api/camera/snapshot")
+def get_camera_snapshot():
+    """Returns single JPEG snapshot frame from demo stream."""
+    return Response(content=MOCK_LEAF_SNAPSHOT, media_type="image/jpeg")
+
+@router.get("/api/camera/proxy-stream")
+async def proxy_esp32_cam_stream(url: str):
+    """
+    Proxies live MJPEG stream from physical ESP32-CAM IP to bypass browser CORS / Private Network Access limits.
+    Example: GET /api/camera/proxy-stream?url=http://192.168.1.100/stream
+    """
+    import urllib.request
+    def stream_generator():
+        try:
+            req = urllib.request.Request(url, headers={'User-Agent': 'AgriRover-Backend'})
+            with urllib.request.urlopen(req, timeout=10) as stream:
+                while True:
+                    chunk = stream.read(4096)
+                    if not chunk:
+                        break
+                    yield chunk
+        except Exception as e:
+            logger.warning(f"Stream proxy failed for {url}: {e}")
+            yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + MOCK_LEAF_SNAPSHOT + b'\r\n')
+
+    return StreamingResponse(
+        stream_generator(),
+        media_type="multipart/x-mixed-replace; boundary=frame"
+    )
+
+@router.get("/api/camera/proxy-capture")
+async def proxy_esp32_cam_capture(url: str):
+    """
+    Proxies JPEG frame capture from physical ESP32-CAM IP to bypass browser CORS restrictions.
+    Example: GET /api/camera/proxy-capture?url=http://192.168.1.100/capture
+    """
+    import urllib.request
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'AgriRover-Backend'})
+        with urllib.request.urlopen(req, timeout=4) as response:
+            image_data = response.read()
+            return Response(content=image_data, media_type="image/jpeg")
+    except Exception as e:
+        logger.warning(f"Proxy capture failed for {url}: {e}. Returning fallback snapshot.")
+        return Response(content=MOCK_LEAF_SNAPSHOT, media_type="image/jpeg")
+
 @router.get("/api/camera/status")
 def get_camera_status():
     return {
@@ -42,7 +100,8 @@ def get_camera_status():
         "fps": 20,
         "resolution": "VGA (640x480)",
         "signal_quality": "94%",
-        "stream_url": "/api/camera/stream"
+        "stream_url": "/api/camera/stream",
+        "snapshot_url": "/api/camera/snapshot"
     }
 
 @router.post("/api/upload-image")

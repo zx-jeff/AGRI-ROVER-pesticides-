@@ -1,4 +1,5 @@
 import logging
+import asyncio
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -43,15 +44,20 @@ app.include_router(alerts.router)
 app.include_router(camera.router)
 app.include_router(devices.router)
 
+from services.irrigation_poller import irrigation_poller
+
 @app.on_event("startup")
-def startup_event():
+async def startup_event():
     logger.info("Initializing HiveMQ MQTT Service...")
-    mqtt_service.start()
+    loop = asyncio.get_running_loop()
+    mqtt_service.start(loop=loop)
+    irrigation_poller.start()
 
 @app.on_event("shutdown")
 def shutdown_event():
-    logger.info("Stopping MQTT Service...")
+    logger.info("Stopping MQTT Service & Irrigation Poller...")
     mqtt_service.stop()
+    irrigation_poller.stop()
 
 
 @app.get("/")

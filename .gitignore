@@ -28,3 +28,6 @@ smart_farm.db
 # OS Files
 .DS_Store
 Thumbs.db
+
+# Nested Duplicate Clone Folders
+AGRI-ROVER-pesticides-/
