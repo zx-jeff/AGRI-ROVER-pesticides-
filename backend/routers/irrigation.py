@@ -176,14 +176,9 @@ async def manual_pump_control(payload: ManualIrrigationRequest, db: Session = De
     ip_address = config.ip_address if config else ""
 
     if payload.command.upper() == "ON":
-        if rain_detected:
-            status = "BLOCKED_BY_RAIN"
-            reason = "Manual pump start blocked: Rain detected by rain sensor!"
-            authorized = False
-        else:
-            status = "PUMP_ON"
-            reason = f"Manual pump activated for {payload.duration_sec}s."
-            authorized = True
+        status = "PUMP_ON"
+        reason = f"Unrestricted manual pump activated for {payload.duration_sec}s."
+        authorized = True
 
         event = models.IrrigationEvent(
             zone_name="Main Field",
@@ -194,45 +189,35 @@ async def manual_pump_control(payload: ManualIrrigationRequest, db: Session = De
         db.add(event)
         db.commit()
 
-        if authorized:
-            mqtt_cmd = {
-                "command": "IRRIGATE",
-                "cmd": "ON",
-                "pump": "ON",
-                "pump_state": "ON",
-                "state": "ON",
-                "action": "PUMP_ON",
-                "relay": 1,
-                "status": "ON",
-                "duration_sec": payload.duration_sec,
-                "duration_ms": payload.duration_sec * 1000
-            }
+        mqtt_cmd = {
+            "command": "IRRIGATE",
+            "cmd": "ON",
+            "pump": "ON",
+            "pump_state": "ON",
+            "state": "ON",
+            "action": "PUMP_ON",
+            "relay": 1,
+            "status": "ON",
+            "duration_sec": payload.duration_sec,
+            "duration_ms": payload.duration_sec * 1000
+        }
 
-            # Dispatch via MQTT & direct HTTP to NodeMCU IP
-            mqtt_service.publish_irrigation_command(mqtt_cmd)
-            await send_direct_http_command(ip_address, mqtt_cmd)
+        # Dispatch via MQTT & direct HTTP to NodeMCU IP
+        mqtt_service.publish_irrigation_command(mqtt_cmd)
+        await send_direct_http_command(ip_address, mqtt_cmd)
 
-            alert = models.Alert(
-                severity="INFO",
-                title="WATER PUMP ACTIVATED",
-                message=f"Manual irrigation started ({payload.duration_sec}s).",
-                category="IRRIGATION"
-            )
-            db.add(alert)
-            db.commit()
-        else:
-            alert = models.Alert(
-                severity="WARNING",
-                title="MANUAL PUMP BLOCKED BY RAIN",
-                message=reason,
-                category="SAFETY"
-            )
-            db.add(alert)
-            db.commit()
+        alert = models.Alert(
+            severity="INFO",
+            title="WATER PUMP ACTIVATED",
+            message=f"Manual irrigation started unconditionally ({payload.duration_sec}s).",
+            category="IRRIGATION"
+        )
+        db.add(alert)
+        db.commit()
 
         await ws_manager.broadcast("IRRIGATION_EVENT", {
             "command": "ON",
-            "authorized": authorized,
+            "authorized": True,
             "reason": reason,
             "status": status,
             "duration_sec": payload.duration_sec
@@ -240,7 +225,7 @@ async def manual_pump_control(payload: ManualIrrigationRequest, db: Session = De
 
         return {
             "status": status,
-            "authorized": authorized,
+            "authorized": True,
             "reason": reason,
             "duration_sec": payload.duration_sec
         }
