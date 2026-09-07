@@ -69,6 +69,7 @@ class MQTTService:
             loop = self.loop
             if loop and loop.is_running():
                 if topic in ROVER_TELEMETRY_TOPICS:
+                    self._save_rover_telemetry(data)
                     if data.get("command") == "INSPECTION_REQUEST":
                         self._handle_inspection_request(data)
                     asyncio.run_coroutine_threadsafe(
@@ -136,6 +137,36 @@ class MQTTService:
         except Exception as e:
             logger.error(f"Error saving MQTT irrigation telemetry to DB: {e}")
 
+    def _save_rover_telemetry(self, data: dict):
+        """Persists incoming MQTT Rover ESP32 telemetry to DB."""
+        try:
+            from database import SessionLocal
+            import models
+
+            db = SessionLocal()
+            rover = db.query(models.Rover).filter(models.Rover.rover_id == "ROVER_01").first()
+            if not rover:
+                rover = models.Rover(rover_id="ROVER_01")
+                db.add(rover)
+
+            if "mode" in data:
+                rover.mode = str(data["mode"])
+            if "state" in data:
+                rover.status = str(data["state"])
+            if "battery" in data:
+                rover.battery = float(data["battery"])
+
+            fl = float(data.get("front_left_distance_cm", -1))
+            fr = float(data.get("front_right_distance_cm", -1))
+            valid_dists = [d for d in [fl, fr] if d > 0]
+            if valid_dists:
+                rover.obstacle_distance = min(valid_dists)
+
+            db.commit()
+            db.close()
+        except Exception as e:
+            logger.error(f"Error saving Rover telemetry to DB: {e}")
+
     def _handle_inspection_request(self, data):
         """Processes plant inspection trigger from IR Sensor and issues treatment command."""
         request_id = data.get("request_id") or data.get("inspection_id") or "INS_AUTO"
@@ -148,15 +179,22 @@ class MQTTService:
         self.publish_rover_command(cmd_payload)
 
     def publish_rover_command(self, command_dict: dict) -> bool:
-        """Publishes exact JSON command payload to Rover ESP32 command topics."""
+        """Publishes exact JSON and raw text string command payloads to Rover ESP32 command topics."""
         if not self.is_connected:
             logger.warning("Cannot publish MQTT command: Client disconnected")
             return False
         try:
-            payload = json.dumps(command_dict)
+            cmd_name = str(command_dict.get("command", "")).strip()
+            json_payload = json.dumps(command_dict)
+            
+            payloads = [json_payload]
+            if cmd_name:
+                payloads.append(cmd_name)
+
             for top in ROVER_COMMAND_TOPICS:
-                self.client.publish(top, payload)
-            logger.info(f"Published Rover Command: {payload}")
+                for p in payloads:
+                    self.client.publish(top, p)
+            logger.info(f"Published Rover Command to {ROVER_COMMAND_TOPICS}: {json_payload}")
             return True
         except Exception as e:
             logger.error(f"Failed to publish Rover MQTT command: {e}")
