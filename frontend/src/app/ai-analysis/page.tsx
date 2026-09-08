@@ -201,61 +201,114 @@ export default function AiAnalysisPage() {
             </h2>
 
             {latestResult ? (
-              <div className="space-y-4 animate-slide-up">
-                {/* AI Engine */}
+              <div className="space-y-5 animate-slide-up">
+                {/* AI Engine Badge */}
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-surface-500 font-medium">AI Engine:</span>
-                  <span className="font-mono text-brand-700 font-bold bg-brand-50 px-2.5 py-1 rounded-lg border border-brand-200 text-[11px]">
-                    {latestResult.ai_source || 'Gemini Flash'}
+                  <span className="text-surface-500 font-medium flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-brand-500" />
+                    AI Engine:
+                  </span>
+                  <span className="font-mono text-brand-700 font-bold bg-brand-50 px-3 py-1 rounded-lg border border-brand-200 text-xs">
+                    {latestResult.ai_source || 'Google Gemini Vision AI'}
                   </span>
                 </div>
 
-                {/* Disease Classification */}
-                <div className="p-4 rounded-xl bg-surface-50 border border-surface-200 flex items-center justify-between">
-                  <div>
-                    <span className="text-xs text-surface-500 block mb-1 font-medium">Classification:</span>
-                    <span className="text-lg font-extrabold text-brand-700">{latestResult.disease}</span>
+                {/* PROMINENT BIG DISEASE NAME & TYPE BANNER */}
+                <div className="p-5 rounded-2xl bg-gradient-to-br from-surface-50 via-white to-surface-100 border-2 border-surface-200 shadow-sm space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`px-3 py-1 text-[11px] font-black uppercase tracking-widest rounded-full border shadow-sm ${
+                      latestResult.disease === 'HEALTHY'
+                        ? 'bg-brand-100 text-brand-800 border-brand-300'
+                        : latestResult.disease === 'UNKNOWN'
+                        ? 'bg-warm-100 text-warm-800 border-warm-300'
+                        : 'bg-rose-100 text-rose-800 border-rose-300'
+                    }`}>
+                      {latestResult.disease_type || 'Fungal Pathology'}
+                    </span>
+
+                    <span className="font-mono font-extrabold text-sm text-brand-600 bg-white px-2.5 py-1 rounded-lg border border-surface-200">
+                      Confidence: {(latestResult.confidence * 100).toFixed(1)}%
+                    </span>
                   </div>
-                  <div className="text-right">
-                    <span className="text-xs text-surface-500 block mb-1 font-medium">Confidence:</span>
-                    <span className="font-mono font-bold text-sm text-brand-600">
-                      {(latestResult.confidence * 100).toFixed(1)}%
+
+                  {/* BIG DISEASE NAME */}
+                  <h3 className={`text-2xl sm:text-3xl font-black tracking-tight leading-tight mt-1 ${
+                    latestResult.disease === 'HEALTHY'
+                      ? 'text-brand-700'
+                      : latestResult.disease === 'UNKNOWN'
+                      ? 'text-warm-700'
+                      : 'text-rose-600'
+                  }`}>
+                    {latestResult.disease_name || latestResult.disease}
+                  </h3>
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <span className="text-xs text-surface-400 font-mono">
+                      System Class Code: <strong className="text-surface-700">{latestResult.disease}</strong>
                     </span>
                   </div>
                 </div>
 
-                {/* Clinical Findings */}
-                <div className="p-4 rounded-xl bg-surface-50 border border-surface-200 text-xs">
-                  <span className="text-surface-500 block font-semibold mb-1">Clinical Findings:</span>
+                {/* GEMINI PATHOLOGY INFORMATION & CAUSE */}
+                {latestResult.disease_info && (
+                  <div className="p-4 rounded-xl bg-brand-50/70 border border-brand-200 space-y-1.5 text-xs">
+                    <span className="font-bold text-brand-800 flex items-center gap-2 text-xs uppercase tracking-wider">
+                      <FileText className="w-4 h-4 text-brand-600" />
+                      Gemini Pathology Information & Pathogen Cause
+                    </span>
+                    <p className="text-surface-700 leading-relaxed font-medium">
+                      {latestResult.disease_info}
+                    </p>
+                  </div>
+                )}
+
+                {/* GEMINI TREATMENT & PREVENTION GUIDE */}
+                {latestResult.prevention_treatment && (
+                  <div className="p-4 rounded-xl bg-accent-50/70 border border-accent-200 space-y-1.5 text-xs">
+                    <span className="font-bold text-accent-800 flex items-center gap-2 text-xs uppercase tracking-wider">
+                      <ShieldCheck className="w-4 h-4 text-accent-600" />
+                      Gemini Prevention & Agricultural Treatment Plan
+                    </span>
+                    <p className="text-surface-700 leading-relaxed font-medium">
+                      {latestResult.prevention_treatment}
+                    </p>
+                  </div>
+                )}
+
+                {/* OBSERVED CLINICAL SYMPTOMS */}
+                <div className="p-4 rounded-xl bg-surface-50 border border-surface-200 text-xs space-y-1">
+                  <span className="text-surface-500 block font-bold uppercase tracking-wider text-[11px]">Visible Symptoms & Lesions:</span>
                   <p className="text-surface-700 leading-relaxed">{latestResult.description}</p>
                 </div>
 
-                {/* Action */}
+                {/* ROVER ACTION DIRECTIVE */}
                 <div className="p-3 rounded-xl bg-surface-50 border border-surface-200 text-xs flex justify-between items-center">
-                  <span className="text-surface-500 font-medium">AI Directive:</span>
-                  <span className="font-mono font-bold text-surface-700">{latestResult.recommended_action}</span>
+                  <span className="text-surface-500 font-medium">Rover Spray Directive:</span>
+                  <span className="font-mono font-bold text-surface-800 bg-white px-2.5 py-1 rounded-lg border border-surface-200">
+                    {latestResult.recommended_action}
+                  </span>
                 </div>
 
-                {/* Safety Authorization */}
+                {/* SAFETY & PUMP AUTHORIZATION STATUS */}
                 <div className={`p-4 rounded-xl border ${
                   latestResult.treatment_authorized
-                    ? 'bg-brand-50 border-brand-200 text-brand-700'
+                    ? 'bg-brand-50 border-brand-200 text-brand-700 shadow-sm'
                     : 'bg-rose-50 border-rose-200 text-rose-700'
                 }`}>
-                  <div className="flex items-center gap-2 font-bold text-sm mb-1.5">
+                  <div className="flex items-center gap-2 font-extrabold text-sm mb-1">
                     {latestResult.treatment_authorized ? (
                       <CheckCircle className="w-5 h-5 text-brand-500" />
                     ) : (
                       <XCircle className="w-5 h-5 text-rose-500" />
                     )}
-                    {latestResult.treatment_authorized ? 'TREATMENT AUTHORIZED' : 'TREATMENT BLOCKED'}
+                    {latestResult.treatment_authorized ? 'TREATMENT PUMP AUTHORIZED' : 'TREATMENT BLOCKED BY SAFETY'}
                   </div>
                   <p className="text-xs opacity-90">{latestResult.safety_message}</p>
 
                   {latestResult.treatment_authorized && (
-                    <div className="mt-3 pt-3 border-t border-brand-200/60 text-xs flex justify-between font-mono">
-                      <span>Tank: {latestResult.tank_used} / {latestResult.pump_used}</span>
-                      <span>Duration: {latestResult.spray_duration}s</span>
+                    <div className="mt-3 pt-3 border-t border-brand-200/60 text-xs flex justify-between font-mono font-bold text-brand-800">
+                      <span>Assigned Tank: {latestResult.tank_used} ({latestResult.pump_used})</span>
+                      <span>Spray Duration: {latestResult.spray_duration}s</span>
                     </div>
                   )}
                 </div>

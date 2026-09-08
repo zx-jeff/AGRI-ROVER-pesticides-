@@ -13,9 +13,13 @@ Analyze the provided crop/leaf image carefully and return a JSON object with the
 - "plant_detected": true or false
 - "leaf_detected": true or false
 - "health_status": "HEALTHY" or "DISEASED" or "UNKNOWN"
+- "disease_name": specific real agricultural disease name (e.g., "Early Blight (Alternaria solani)", "Powdery Mildew", "Bacterial Spot", "Tomato Yellow Leaf Curl Virus", "Healthy Leaf")
+- "disease_type": category/type of disease (e.g., "Fungal Leaf Spot", "Bacterial Pathogen", "Viral Infection", "Pest Injury", "Nutrient Deficiency", "Healthy Crop")
 - "disease_class": strictly one of ["HEALTHY", "DISEASE_1", "DISEASE_2", "UNKNOWN"]
 - "confidence": confidence score between 0.00 and 1.00
-- "reason": concise 1-2 sentence explanation of visible leaf symptoms
+- "reason": concise explanation of visible leaf symptoms and lesions
+- "disease_info": 2-3 detailed sentences explaining the pathogen cause, favorable environmental conditions, and crop impact
+- "prevention_treatment": 2-3 detailed actionable steps for fungicide/bactericide selection, crop sanitation, and prevention
 - "recommendation": "NO_SPRAY" or "SPRAY_TANK_1" or "SPRAY_TANK_2" or "MANUAL_INSPECTION"
 
 Return ONLY valid JSON matching this schema. Do not include markdown codeblocks or surrounding conversational text.
@@ -91,6 +95,34 @@ class GeminiAIService(BaseAIService):
             if disease not in ["HEALTHY", "DISEASE_1", "DISEASE_2", "UNKNOWN"]:
                 disease = "UNKNOWN"
 
+            disease_name = str(parsed.get("disease_name") or (
+                "Healthy Leaf Tissue" if disease == "HEALTHY" else
+                "Early Blight (Alternaria solani)" if disease == "DISEASE_1" else
+                "Powdery Mildew (Erysiphe cichoracearum)" if disease == "DISEASE_2" else
+                "Unidentified Crop Pathology"
+            )).strip()
+
+            disease_type = str(parsed.get("disease_type") or (
+                "Healthy Foliage" if disease == "HEALTHY" else
+                "Fungal Leaf Spot" if disease == "DISEASE_1" else
+                "Fungal Mildew Infection" if disease == "DISEASE_2" else
+                "General Pathology"
+            )).strip()
+
+            disease_info = str(parsed.get("disease_info") or (
+                "Leaf tissue shows healthy cell structure with normal chlorophyll density." if disease == "HEALTHY" else
+                "Alternaria solani thrives in warm, high-humidity environments. Causes premature defoliation and severe yield loss if untreated." if disease == "DISEASE_1" else
+                "Powdery mildew fungus forms white spore blankets that reduce photosynthetic capacity and weaken the host plant." if disease == "DISEASE_2" else
+                "Pathogen details require laboratory verification."
+            )).strip()
+
+            prevention_treatment = str(parsed.get("prevention_treatment") or (
+                "Maintain optimal plant spacing, balanced nitrogen fertilization, and routine drip irrigation." if disease == "HEALTHY" else
+                "Apply targeted Copper / Mancozeb fungicide spray (Pump 1). Remove infected lower leaves and ensure leaf dry time." if disease == "DISEASE_1" else
+                "Apply Sulfur / Bio-fungicide spray (Pump 2). Increase canopy airflow and avoid excess overhead watering." if disease == "DISEASE_2" else
+                "Isolate specimen for expert agronomist inspection."
+            )).strip()
+
             confidence = float(parsed.get("confidence", 0.0))
             reason = str(parsed.get("reason", "Analysis completed."))
             recommendation = str(parsed.get("recommendation", "MANUAL_INSPECTION"))
@@ -100,6 +132,10 @@ class GeminiAIService(BaseAIService):
                 "leaf_detected": bool(parsed.get("leaf_detected", True)),
                 "health_status": str(parsed.get("health_status", "UNKNOWN")),
                 "disease": disease,
+                "disease_name": disease_name,
+                "disease_type": disease_type,
+                "disease_info": disease_info,
+                "prevention_treatment": prevention_treatment,
                 "confidence": confidence,
                 "description": reason,
                 "recommended_action": recommendation,
@@ -128,6 +164,10 @@ class MockAIService(BaseAIService):
                 "leaf_detected": True,
                 "health_status": "HEALTHY",
                 "disease": "HEALTHY",
+                "disease_name": "Healthy Foliage (Optimal Leaf Cell Structure)",
+                "disease_type": "Healthy Crop",
+                "disease_info": "Vibrant chlorophyll pigmentation with intact cuticle barrier. No fungal hyphae or necrotic lesions detected.",
+                "prevention_treatment": "No spray chemical application required. Continue standard irrigation and soil nutrient management.",
                 "confidence": 0.95,
                 "description": "Healthy leaf tissue detected with vibrant green pigmentation and no visible lesions.",
                 "recommended_action": "NO_SPRAY",
@@ -140,6 +180,10 @@ class MockAIService(BaseAIService):
                 "leaf_detected": True,
                 "health_status": "DISEASED",
                 "disease": "DISEASE_1",
+                "disease_name": "Early Blight (Alternaria solani)",
+                "disease_type": "Fungal Leaf Spot Infection",
+                "disease_info": "Target-shaped concentric fungal lesions caused by Alternaria solani. Spreads rapidly under humid weather and warm temperatures (24-29°C).",
+                "prevention_treatment": "Apply targeted Copper / Mancozeb fungicide via Pump 1. Prune affected bottom foliage to improve canopy aeration.",
                 "confidence": 0.91,
                 "description": "Fungal leaf spot blight lesions identified on middle leaf surface.",
                 "recommended_action": "SPRAY_TANK_1",
@@ -152,6 +196,10 @@ class MockAIService(BaseAIService):
                 "leaf_detected": True,
                 "health_status": "DISEASED",
                 "disease": "DISEASE_2",
+                "disease_name": "Powdery Mildew (Erysiphe cichoracearum)",
+                "disease_type": "Fungal Mildew Spore Blanket",
+                "disease_info": "Powdery white fungal spore colonies along upper epidermal surfaces. Blocks light absorption, causing leaf curling and senescence.",
+                "prevention_treatment": "Apply Bio-fungicide / Sulfur treatment via Pump 2. Avoid overhead sprinkler irrigation to lower humidity.",
                 "confidence": 0.88,
                 "description": "Powdery mildew rust pustules observed along leaf vein margins.",
                 "recommended_action": "SPRAY_TANK_2",
@@ -164,6 +212,10 @@ class MockAIService(BaseAIService):
                 "leaf_detected": False,
                 "health_status": "UNKNOWN",
                 "disease": "UNKNOWN",
+                "disease_name": "Unidentified Leaf Anomaly",
+                "disease_type": "Indeterminate Specimen",
+                "disease_info": "Image resolution or lighting prevents definitive fungal/bacterial classification.",
+                "prevention_treatment": "Perform physical manual leaf inspection and capture a high-resolution focused image.",
                 "confidence": 0.30,
                 "description": "Blurred frame or low clarity sample. Fail-closed safety rules engaged.",
                 "recommended_action": "MANUAL_INSPECTION",

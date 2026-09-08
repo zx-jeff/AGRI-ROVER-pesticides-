@@ -594,14 +594,39 @@ export default function LiveCameraFeed({ streamUrl, onAnalysisComplete }: LiveCa
 
       {/* Realtime Analysis Output */}
       {analysisResult && (
-        <div className="p-4 bg-surface-50 rounded-xl border border-surface-200 space-y-2 text-xs animate-slide-up">
+        <div className="p-4 bg-gradient-to-br from-surface-50 to-white rounded-2xl border-2 border-surface-200 space-y-3 text-xs animate-slide-up shadow-sm">
           <div className="flex items-center justify-between border-b border-surface-200 pb-2">
-            <span className="text-surface-500 font-semibold">Pathology Diagnosis:</span>
-            <span className="font-extrabold text-brand-700">{analysisResult.disease}</span>
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-100 text-rose-800 border border-rose-300">
+              {analysisResult.disease_type || 'Crop Pathology'}
+            </span>
+            <span className="font-mono font-bold text-brand-600">
+              Confidence: {((analysisResult.confidence || 0) * 100).toFixed(0)}%
+            </span>
           </div>
 
-          <div className="text-surface-600 leading-relaxed pt-1">
-            <strong className="text-surface-700">Clinical Findings:</strong> {analysisResult.description}
+          <div>
+            <h4 className="text-xl font-black text-rose-600 tracking-tight leading-tight">
+              {analysisResult.disease_name || analysisResult.disease}
+            </h4>
+            <p className="text-[11px] text-surface-500 font-mono mt-0.5">Code: {analysisResult.disease}</p>
+          </div>
+
+          {analysisResult.disease_info && (
+            <div className="p-3 rounded-xl bg-brand-50/70 border border-brand-200 text-surface-700 leading-relaxed">
+              <strong className="text-brand-800 font-bold block mb-0.5">Gemini Disease Information:</strong>
+              {analysisResult.disease_info}
+            </div>
+          )}
+
+          {analysisResult.prevention_treatment && (
+            <div className="p-3 rounded-xl bg-accent-50/70 border border-accent-200 text-surface-700 leading-relaxed">
+              <strong className="text-accent-800 font-bold block mb-0.5">Gemini Treatment Recommendation:</strong>
+              {analysisResult.prevention_treatment}
+            </div>
+          )}
+
+          <div className="text-surface-600 leading-relaxed pt-0.5">
+            <strong className="text-surface-700">Observed Lesions:</strong> {analysisResult.description}
           </div>
 
           <div className={`p-3 rounded-xl border font-bold flex items-center gap-2 ${
