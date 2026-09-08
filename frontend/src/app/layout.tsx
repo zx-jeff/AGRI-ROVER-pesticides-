@@ -126,7 +126,6 @@ function AppShell({ children }: { children: React.ReactNode }) {
     { name: t('navSmartIrrigation'), href: '/irrigation', icon: Droplets },
     { name: t('navEnvironment'), href: '/environment', icon: CloudSun },
     { name: t('navAuditHistory'), href: '/history', icon: History },
-    { name: t('navTreatmentConfig'), href: '/treatment-config', icon: Settings },
   ];
 
   return (

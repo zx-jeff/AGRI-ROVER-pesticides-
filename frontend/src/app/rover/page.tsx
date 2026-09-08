@@ -124,32 +124,7 @@ export default function RoverPage() {
             </span>
           </div>
 
-          {/* Front Ultrasonic Obstacle Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className={`p-4 rounded-xl border ${roverState.front_left_distance_cm > 0 && roverState.front_left_distance_cm <= 30 ? 'bg-rose-50 border-rose-300 text-rose-800' : 'bg-surface-50 border-surface-200 text-surface-800'}`}>
-              <span className="text-xs font-bold block text-surface-500">Front-Left Ultrasonic (Trig 16 / Echo 17)</span>
-              <div className="text-xl font-extrabold mt-1">
-                {roverState.front_left_distance_cm > 0 ? `${roverState.front_left_distance_cm} cm` : 'NO ECHO'}
-              </div>
-              {roverState.front_left_distance_cm > 0 && roverState.front_left_distance_cm <= 30 && (
-                <span className="text-[10px] font-bold text-rose-600 flex items-center gap-1 mt-1">
-                  <AlertTriangle className="w-3 h-3" /> Obstacle &lt; 30cm Detected!
-                </span>
-              )}
-            </div>
 
-            <div className={`p-4 rounded-xl border ${roverState.front_right_distance_cm > 0 && roverState.front_right_distance_cm <= 30 ? 'bg-rose-50 border-rose-300 text-rose-800' : 'bg-surface-50 border-surface-200 text-surface-800'}`}>
-              <span className="text-xs font-bold block text-surface-500">Front-Right Ultrasonic (Trig 18 / Echo 19)</span>
-              <div className="text-xl font-extrabold mt-1">
-                {roverState.front_right_distance_cm > 0 ? `${roverState.front_right_distance_cm} cm` : 'NO ECHO'}
-              </div>
-              {roverState.front_right_distance_cm > 0 && roverState.front_right_distance_cm <= 30 && (
-                <span className="text-[10px] font-bold text-rose-600 flex items-center gap-1 mt-1">
-                  <AlertTriangle className="w-3 h-3" /> Obstacle &lt; 30cm Detected!
-                </span>
-              )}
-            </div>
-          </div>
 
           {/* Chemical Tank Level Gauges */}
           <div className="space-y-4 pt-2">

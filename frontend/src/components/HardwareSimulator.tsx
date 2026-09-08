@@ -97,7 +97,7 @@ export default function HardwareSimulator({ onRefreshDashboard }: HardwareSimula
         </span>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Column 1: Directional Rover Control DPAD */}
         <div className="space-y-4 bg-surface-50 p-4 rounded-xl border border-surface-200 flex flex-col justify-between">
           <div>
@@ -184,67 +184,7 @@ export default function HardwareSimulator({ onRefreshDashboard }: HardwareSimula
           </div>
         </div>
 
-        {/* Column 2: Obstacle Avoidance & Hardware Sensors */}
-        <div className="space-y-5 bg-surface-50 p-4 rounded-xl border border-surface-200 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-bold text-surface-700 uppercase tracking-wider mb-4">
-              <Sliders className="w-4 h-4 text-accent-500" />
-              Sensor Controls
-            </div>
 
-            {/* Ultrasonic Distance */}
-            <div className="mb-5">
-              <div className="flex justify-between text-xs mb-2">
-                <span className="text-surface-500 font-medium">HC-SR04 Distance:</span>
-                <span className={`font-mono font-bold ${obstacleDistance < 20 ? 'text-rose-600' : 'text-brand-600'}`}>
-                  {obstacleDistance} cm {obstacleDistance < 20 ? '⚠️ CRITICAL' : ''}
-                </span>
-              </div>
-              <input
-                type="range"
-                min="5"
-                max="200"
-                value={obstacleDistance}
-                onChange={(e) => handleUpdateObstacle(Number(e.target.value))}
-                className="w-full"
-              />
-              <p className="text-[11px] text-surface-400 mt-1.5">Distance &lt; 20cm triggers safety motor cutoff.</p>
-            </div>
-
-            {/* Soil Moisture */}
-            <div className="mb-5">
-              <div className="flex justify-between text-xs mb-2">
-                <span className="text-surface-500 font-medium">Soil Moisture:</span>
-                <span className="font-mono font-bold text-accent-600">{soilMoisture}%</span>
-              </div>
-              <input
-                type="range"
-                min="10"
-                max="100"
-                value={soilMoisture}
-                onChange={(e) => handleUpdateSensors(Number(e.target.value), rainDetected)}
-                className="w-full"
-              />
-              <p className="text-[11px] text-surface-400 mt-1.5">Moisture ≥ 70% suppresses scheduled irrigation.</p>
-            </div>
-
-            {/* Rain Sensor */}
-            <div className="flex items-center justify-between pt-3 border-t border-surface-200">
-              <span className="text-xs text-surface-600 flex items-center gap-2 font-medium">
-                <CloudRain className={`w-4 h-4 ${rainDetected ? 'text-accent-500' : 'text-surface-400'}`} />
-                Rain Sensor
-              </span>
-              <button
-                onClick={() => handleUpdateSensors(soilMoisture, !rainDetected)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 ${
-                  rainDetected ? 'bg-accent-50 text-accent-700 border border-accent-200' : 'bg-white text-surface-500 border border-surface-200 hover:border-surface-300'
-                }`}
-              >
-                {rainDetected ? '🌧️ RAINING' : '☀️ DRY'}
-              </button>
-            </div>
-          </div>
-        </div>
 
         {/* Column 3: Emergency Cutoff & Telemetry Status */}
         <div className="space-y-4 bg-surface-50 p-4 rounded-xl border border-surface-200 flex flex-col justify-between">
